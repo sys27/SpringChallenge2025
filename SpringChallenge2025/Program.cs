@@ -1,8 +1,37 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace SpringChallenge2025;
+
+public sealed class Memory
+{
+    public static readonly Memory Instance = new Memory();
+
+    private readonly Board[] boards = new Board[11];
+    private int index = 0;
+
+    public void Add(Board board)
+    {
+        Debug.Assert(index < boards.Length);
+
+        boards[index] = board;
+        index++;
+    }
+
+    public void Clear()
+    {
+        for (var i = 0; i < boards.Length; i++)
+            boards[i] = default;
+
+        index = 0;
+    }
+
+    public Board[] Boards => boards;
+
+    public int Count => index;
+}
 
 public readonly struct Board
 {
@@ -63,7 +92,7 @@ public readonly struct Board
     private static readonly uint[] values = new uint[4];
     private static readonly uint[] masks = new uint[4];
 
-    public IEnumerable<Board> GetNextBoards()
+    public Memory GetNextBoards()
     {
         for (var cell = 0; cell < 9; cell++)
         {
@@ -108,12 +137,14 @@ public readonly struct Board
                         mergedBoard &= masks[j];
 
                 mergedBoard |= current << (cell * 3);
-                yield return new Board(depth + 1, mergedBoard);
+                Memory.Instance.Add(new Board(depth + 1, mergedBoard));
             }
 
             if (!merged)
-                yield return new Board(depth + 1, board | (1u << (cell * 3)));
+                Memory.Instance.Add(new Board(depth + 1, board | (1u << (cell * 3))));
         }
+
+        return Memory.Instance;
     }
 
     public int Depth => depth;
@@ -191,7 +222,7 @@ public class Program
         // 350917228
         // 1014562252076
         // 2168
-        // yield return (7, new Board(0, 0b110_000_100_010_000_010_100_000_000), 36, 350917228);
+        yield return (7, new Board(0, 0b110_000_100_010_000_010_100_000_000), 36, 350917228);
 
         // #8
         // 32
@@ -201,7 +232,7 @@ public class Program
         // 999653138
         // 104530503002231
         // 4154
-        // yield return (8, new Board(0, 0b000_000_000_000_101_100_001_000_101), 32, 999653138);
+        yield return (8, new Board(0, 0b000_000_000_000_101_100_001_000_101), 32, 999653138);
 
         // #9
         // 40
@@ -211,7 +242,7 @@ public class Program
         // 521112022
         // 946763082877
         // 4956
-        // yield return (9, new Board(0, 0b000_000_100_000_010_100_001_011_100), 40, 521112022);
+        yield return (9, new Board(0, 0b000_000_100_000_010_100_001_011_100), 40, 521112022);
 
         // #10
         // 40
@@ -221,7 +252,7 @@ public class Program
         // 667094338
         // 559238314648167
         // 6044
-        // yield return (10, new Board(0, 0b000_101_100_000_011_000_000_011_000), 40, 667094338);
+        yield return (10, new Board(0, 0b000_101_100_000_011_000_000_011_000), 40, 667094338);
 
         // #11
         // 20
@@ -231,7 +262,7 @@ public class Program
         // 738691369
         // 4017226136890
         // 93190
-        // yield return (11, new Board(0, 0b000_101_001_000_000_000_100_000_001), 20, 738691369);
+        yield return (11, new Board(0, 0b000_101_001_000_000_000_100_000_001), 20, 738691369);
 
         // #12
         // 20
@@ -241,7 +272,7 @@ public class Program
         // 808014757
         // 950995003182
         // 94596
-        // yield return (12, new Board(0, 0b001_000_000_011_101_010_001_000_000), 20, 808014757);
+        yield return (12, new Board(0, 0b001_000_000_011_101_010_001_000_000), 20, 808014757);
     }
 
     public static void Main(string[] args)
@@ -250,6 +281,8 @@ public class Program
 
         foreach (var (id, testCase, maxDepth, final) in GetTestCase())
         {
+            var sw = Stopwatch.StartNew();
+
             var finalSum = 0u;
             var queue = new Queue<Board>();
             queue.Enqueue(testCase);
@@ -264,11 +297,16 @@ public class Program
                 }
 
                 var added = false;
-                foreach (var b in board.GetNextBoards())
+                var memory = board.GetNextBoards();
+                for (var i = 0; i < memory.Count; i++)
                 {
+                    var b = memory.Boards[i];
+
                     added = true;
                     queue.Enqueue(b);
                 }
+
+                memory.Clear();
 
                 if (!added)
                 {
@@ -276,7 +314,10 @@ public class Program
                 }
             }
 
-            Console.WriteLine($"#{id}. Final sum: {finalSum}. Is valid: {finalSum == final}");
+            sw.Stop();
+            Console.WriteLine($"---------- #{id} ----------");
+            Console.WriteLine($"Final sum: {finalSum}. Is valid: {finalSum == final}");
+            Console.WriteLine($"Time: {sw.ElapsedMilliseconds} ms");
         }
     }
 }
