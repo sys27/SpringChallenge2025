@@ -66,7 +66,9 @@ public readonly struct Board
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private uint GetByIndex(int index)
-        => (board >> (index * 3)) & 0b111u;
+        => index < 0
+            ? 0
+            : (board >> (index * 3)) & 0b111u;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static uint GetMask(int index)
@@ -118,13 +120,12 @@ public readonly struct Board
             masks[3] = ~GetMask(cell - 1);
 
             var merged = false;
-            for (var i = 0; i < Positions.Length; i++)
+            foreach (var position in Positions)
             {
-                var position = Positions[i];
                 var current = 0u;
-                for (var j = 0; j < values.Length; j++)
-                    if ((position & (1 << j)) != 0)
-                        current += values[j];
+                for (var i = 0; i < values.Length; i++)
+                    if ((position & (1 << i)) != 0)
+                        current += values[i];
 
                 if (current > 6)
                     continue;
@@ -132,9 +133,9 @@ public readonly struct Board
                 merged = true;
 
                 var mergedBoard = board;
-                for (var j = 0; j < masks.Length; j++)
-                    if ((position & (1 << j)) != 0)
-                        mergedBoard &= masks[j];
+                for (var i = 0; i < masks.Length; i++)
+                    if ((position & (1 << i)) != 0)
+                        mergedBoard &= masks[i];
 
                 mergedBoard |= current << (cell * 3);
                 Memory.Instance.Add(new Board(depth + 1, mergedBoard));
@@ -320,4 +321,56 @@ public class Program
             Console.WriteLine($"Time: {sw.ElapsedMilliseconds} ms");
         }
     }
+
+    // public static void Main(string[] args)
+    // {
+    //     var maxDepth = int.Parse(Console.ReadLine()!);
+    //     var inputBoard = 0u;
+    //     for (var i = 2; i >= 0; i--)
+    //     {
+    //         var input = Console.ReadLine()!.Split(' ');
+    //         for (var j = 2; j >= 0; j--)
+    //         {
+    //             var value = uint.Parse(input[j]);
+    //             if (value == 0)
+    //                 continue;
+    //
+    //             inputBoard |= value << (i * 3 + j) * 3;
+    //         }
+    //     }
+    //
+    //     const uint mod = 1u << 30;
+    //     var finalSum = 0u;
+    //     var queue = new Queue<Board>();
+    //     queue.Enqueue(new Board(0, inputBoard));
+    //
+    //     while (queue.Count > 0)
+    //     {
+    //         var board = queue.Dequeue();
+    //         if (board.Depth >= maxDepth)
+    //         {
+    //             finalSum = (finalSum + board.GetHash()) % mod;
+    //             continue;
+    //         }
+    //
+    //         var added = false;
+    //         var memory = board.GetNextBoards();
+    //         for (var i = 0; i < memory.Count; i++)
+    //         {
+    //             var b = memory.Boards[i];
+    //
+    //             added = true;
+    //             queue.Enqueue(b);
+    //         }
+    //
+    //         memory.Clear();
+    //
+    //         if (!added)
+    //         {
+    //             finalSum = (finalSum + board.GetHash()) % mod;
+    //         }
+    //     }
+    //
+    //     Console.WriteLine(finalSum);
+    // }
 }
